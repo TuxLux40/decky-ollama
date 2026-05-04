@@ -1,7 +1,6 @@
 import {
   ButtonItem,
   definePlugin,
-  DialogButton,
   PanelSection,
   PanelSectionRow,
   Router,
@@ -21,6 +20,17 @@ const installOllama = callable<[], boolean>("install_ollama");
 const listModels = callable<[], OllamaModel[]>("list_models");
 const pullModel = callable<[name: string], boolean>("pull_model");
 const deleteModel = callable<[name: string], boolean>("delete_model");
+
+// Models suggested in the pull UI — small enough to run comfortably on Deck hardware
+const SUGGESTED_MODELS = [
+  "llama3.2:1b",
+  "llama3.2:3b",
+  "phi3.5:3.8b",
+  "gemma3:1b",
+  "gemma3:4b",
+  "qwen2.5:3b",
+  "mistral:7b",
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,7 +141,7 @@ function Content() {
 
   async function handlePull(name: string) {
     setBusy(true);
-    pullModel(name); // fire-and-forget; progress comes via events
+    pullModel(name); // fire-and-forget; progress arrives via pull_progress events
   }
 
   async function handleDelete(name: string) {
@@ -168,28 +178,54 @@ function Content() {
       </PanelSection>
 
       {status?.running && (
-        <PanelSection title="Models">
-          <ModelList models={models} onDelete={handleDelete} />
+        <>
+          <PanelSection title="Installed models">
+            <ModelList models={models} onDelete={handleDelete} />
 
-          {pullProgress && (
+            {pullProgress && (
+              <PanelSectionRow>
+                <ButtonItem layout="below" description={pullProgress.status}>
+                  {pullProgress.total
+                    ? `${Math.round(((pullProgress.completed ?? 0) / pullProgress.total) * 100)}%`
+                    : "Pulling…"}
+                </ButtonItem>
+              </PanelSectionRow>
+            )}
+          </PanelSection>
+
+          <PanelSection title="Pull a model">
+            {SUGGESTED_MODELS.map((name) => (
+              <PanelSectionRow key={name}>
+                <ButtonItem
+                  layout="below"
+                  onClick={() => handlePull(name)}
+                  disabled={busy}
+                >
+                  {name}
+                </ButtonItem>
+              </PanelSectionRow>
+            ))}
+          </PanelSection>
+
+          <PanelSection title="Links">
             <PanelSectionRow>
-              <ButtonItem layout="below" description={pullProgress.status}>
-                {pullProgress.total
-                  ? `${Math.round(((pullProgress.completed ?? 0) / pullProgress.total) * 100)}%`
-                  : "Pulling…"}
+              <ButtonItem
+                layout="below"
+                onClick={() => Router.NavigateToExternalWeb("http://localhost:11434")}
+              >
+                Open Ollama API
               </ButtonItem>
             </PanelSectionRow>
-          )}
-
-          <PanelSectionRow>
-            <ButtonItem
-              layout="below"
-              onClick={() => Router.NavigateToExternalWeb("http://localhost:11434")}
-            >
-              Open Ollama UI
-            </ButtonItem>
-          </PanelSectionRow>
-        </PanelSection>
+            <PanelSectionRow>
+              <ButtonItem
+                layout="below"
+                onClick={() => Router.NavigateToExternalWeb("https://ollama.com/library")}
+              >
+                Browse model library
+              </ButtonItem>
+            </PanelSectionRow>
+          </PanelSection>
+        </>
       )}
     </>
   );
