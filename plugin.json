@@ -1,0 +1,11 @@
+{
+  "name": "decky-ollama",
+  "author": "TuxLux40",
+  "flags": ["_root"],
+  "api_version": 1,
+  "publish": {
+    "tags": ["ollama", "ai", "llm", "tools"],
+    "description": "Run and manage Ollama (local LLM runtime) directly from the Steam Deck Quick Access Menu. Install, start/stop the service, pull models, and chat — all without leaving Gaming Mode.",
+    "image": "https://raw.githubusercontent.com/TuxLux40/decky-ollama/main/assets/logo.png"
+  }
+}
