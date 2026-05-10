@@ -20,7 +20,6 @@ A [Decky Loader](https://decky.xyz) plugin that brings [Ollama](https://ollama.a
 ## What It Does
 
 - **Service control** — start and stop `ollama serve` from the QAM without leaving Gaming Mode
-- **One-click install** — download and install Ollama via the official installer if not already present
 - **Model info** — lists installed models and their disk size at a glance
 - **VRAM eviction** — the `ollama-game-watcher` system service unloads models from VRAM the moment a game starts
 
@@ -33,6 +32,7 @@ I wanted to let my PC run as a game streaming server to play over tailscale and 
 
 - Steam Deck / SteamOS 3.x or an Arch-based distro (tested on CachyOS)
 - [Decky Loader](https://decky.xyz) installed
+- [Ollama](https://ollama.ai) installed and at least one model pulled (e.g. `ollama pull huihui_ai/qwen3.5-abliterated`)
 
 ### Option A — sideload a pre-built release (no build tools required)
 
@@ -79,13 +79,12 @@ The game watcher is a separate bash process under systemd. It polls `pgrep -f "S
 
 ### Backend API
 
-| Method             | Purpose                                      |
-| ------------------ | -------------------------------------------- |
-| `get_status()`     | Returns `{ installed, running, version }`    |
-| `start_service()`  | Starts `ollama serve`                        |
-| `stop_service()`   | Stops the running `ollama serve` process     |
-| `install_ollama()` | Runs the official install script             |
-| `list_models()`    | Returns installed models from the Ollama API |
+| Method            | Purpose                                      |
+| ----------------- | -------------------------------------------- |
+| `get_status()`    | Returns `{ installed, running, version }`    |
+| `start_service()` | Starts `ollama serve`                        |
+| `stop_service()`  | Stops the running `ollama serve` process     |
+| `list_models()`   | Returns installed models from the Ollama API |
 
 ## Development
 

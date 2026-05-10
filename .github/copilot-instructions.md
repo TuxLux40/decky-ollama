@@ -1,5 +1,7 @@
 # Copilot Instructions
 
+This repo is a [Decky Loader](https://decky.xyz) plugin for managing Ollama on Steam Deck. Keep changes small, explicit, and aligned with the existing split between the React frontend and the Python backend. For product and setup context, link to [README.md](README.md) instead of repeating it here.
+
 ## Commands
 
 ```sh
@@ -10,58 +12,27 @@ pnpm run typecheck # TypeScript type check without emit
 pnpm run lint      # ESLint on src/
 ```
 
-There is no test suite. To iterate on the Python backend without a full rebuild, edit `main.py` and restart Decky Loader on the Deck.
+There is no test suite in this repo. For backend-only iteration, edit [main.py](main.py) and restart Decky Loader on the Deck.
 
-Deploy to the Steam Deck:
-```sh
-rsync -av --exclude node_modules --exclude .git . deck@<deck-ip>:~/homebrew/plugins/decky-ollama/
-```
+## What Lives Where
 
-## Architecture
+- [src/index.tsx](src/index.tsx): single React QAM panel, all frontend state and Decky API callables live here.
+- [main.py](main.py): Python `Plugin` class; public async methods are exposed to the frontend as RPC endpoints.
+- [src/types.d.ts](src/types.d.ts): shared TypeScript contracts; add new frontend/backend types here.
+- [plugin.json](plugin.json): plugin metadata and the `_root` flag.
+- [ollama-game-watcher](ollama-game-watcher) and [setup-ollama-game-watcher.sh](setup-ollama-game-watcher.sh): separate watcher/service flow; keep the script and setup path in sync if you touch this area.
 
-This is a [Decky Loader](https://decky.xyz) plugin with two distinct layers:
+## Conventions
 
-```
-QAM panel (React/TypeScript)   src/index.tsx
-        │  callable() / addEventListener()
-        ▼
-Decky Loader IPC
-        ▼
-main.py  (Python, runs as root — see plugin.json "flags": ["_root"])
-        │
-   ┌────┴──────────────┐
-   │                   │
-ollama binary    Ollama REST API  (http://localhost:11434)
-```
+- Use `callable<Args, Return>("method_name")` at module scope for frontend-to-backend calls.
+- Use `decky.emit("event_name", payload)` for backend-to-frontend events and pair listeners with `addEventListener` / `removeEventListener` cleanup.
+- Keep new backend methods as public `async def` methods on `Plugin` so Decky exposes them automatically.
+- Keep shared interfaces in [src/types.d.ts](src/types.d.ts); avoid duplicating contracts inline.
+- Use `decky.logger.info/error(...)` for backend logging, not `print`.
+- Use stdlib networking in the backend (`urllib.request`); do not introduce extra HTTP dependencies.
+- Treat `OLLAMA_BIN`, `OLLAMA_API`, and `INSTALL_SCRIPT` as module-level configuration in [main.py](main.py).
 
-**Frontend** (`src/index.tsx`) — A single React component rendered in the Steam QAM. All state lives here; there are no pages/routes.
+## Useful References
 
-**Backend** (`main.py`) — A `Plugin` class whose public `async` methods are automatically exposed to the frontend as RPC endpoints.
-
-**Game watcher** (`ollama-game-watcher`) — A standalone bash script installed as a systemd user service. It polls for active Steam games and evicts loaded Ollama models from VRAM when a game starts, so the GPU is free for gaming.
-
-## Key Conventions
-
-### Frontend ↔ Backend communication
-
-- **RPC (frontend → backend):** Declare callables at module level with `callable<[ArgTypes], ReturnType>("python_method_name")`. Call them like normal async functions.
-- **Events (backend → frontend):** The backend pushes events with `decky.emit("event_name", payload)`. The frontend subscribes with `addEventListener` / `removeEventListener` in a `useEffect` cleanup pair.
-- `pullModel` is intentionally **fire-and-forget** on the frontend — progress arrives via `pull_progress` events; completion via `pull_done`.
-
-### Adding a new backend method
-
-1. Add a public `async def method_name(self, ...)` to the `Plugin` class in `main.py`.
-2. Declare and use it in `src/index.tsx` with `callable<[ArgTypes], ReturnType>("method_name")`.
-3. Add corresponding types to `src/types.d.ts` if needed.
-
-### TypeScript
-
-- Strict mode is enabled (`strict`, `noUnusedLocals`, `noUnusedParameters`).
-- All shared types are in `src/types.d.ts` — add new interfaces there, not inline.
-- The build uses `@decky/rollup` (wraps Rollup); config is a one-liner in `rollup.config.js`.
-
-### Python backend
-
-- Use `decky.logger.info/error(...)` for all logging (not `print`).
-- HTTP calls to the Ollama API use `urllib.request` (stdlib only — no third-party HTTP libs available in the plugin sandbox).
-- `OLLAMA_BIN`, `OLLAMA_API`, and `INSTALL_SCRIPT` are module-level constants — update them there, not inline.
+- [README.md](README.md): architecture overview, install flow, and backend method/event tables.
+- [rollup.config.js](rollup.config.js): build setup is intentionally minimal.

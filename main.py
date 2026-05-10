@@ -16,7 +16,6 @@ def _find_ollama() -> Path:
 
 OLLAMA_BIN = _find_ollama()
 OLLAMA_API = "http://localhost:11434"
-INSTALL_SCRIPT = "https://ollama.ai/install.sh"
 
 
 class Plugin:
@@ -92,24 +91,6 @@ class Plugin:
             return True
         except Exception as e:
             decky.logger.error(f"stop_service failed: {e}")
-            return False
-
-    # ── Install ──────────────────────────────────────────────────────────────
-
-    async def install_ollama(self) -> bool:
-        try:
-            decky.logger.info("Installing Ollama…")
-            result = subprocess.run(
-                ["sh", "-c", f"curl -fsSL {INSTALL_SCRIPT} | sh"],
-                capture_output=True, text=True, timeout=300
-            )
-            if result.returncode != 0:
-                decky.logger.error(f"Install failed: {result.stderr}")
-                return False
-            decky.logger.info("Ollama installed successfully")
-            return True
-        except Exception as e:
-            decky.logger.error(f"install_ollama failed: {e}")
             return False
 
     # ── Models ───────────────────────────────────────────────────────────────

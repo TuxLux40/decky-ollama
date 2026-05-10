@@ -16,7 +16,6 @@ import type { OllamaStatus, OllamaModel } from "./types";
 const getStatus = callable<[], OllamaStatus>("get_status");
 const startService = callable<[], boolean>("start_service");
 const stopService = callable<[], boolean>("stop_service");
-const installOllama = callable<[], boolean>("install_ollama");
 const listModels = callable<[], OllamaModel[]>("list_models");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,25 +89,10 @@ function Content() {
     setBusy(false);
   }
 
-  async function handleInstall() {
-    setBusy(true);
-    await installOllama();
-    await refresh();
-    setBusy(false);
-  }
-
   return (
     <>
       <PanelSection title="Status">
         <StatusRow status={status} />
-
-        {!status?.installed && (
-          <PanelSectionRow>
-            <ButtonItem layout="below" onClick={handleInstall} disabled={busy}>
-              Install Ollama
-            </ButtonItem>
-          </PanelSectionRow>
-        )}
 
         {status?.installed && (
           <PanelSectionRow>
