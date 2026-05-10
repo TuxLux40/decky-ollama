@@ -1,15 +1,15 @@
 import {
   ButtonItem,
   definePlugin,
+  Field,
   PanelSection,
   PanelSectionRow,
-  Router,
   staticClasses,
 } from "@decky/ui";
-import { callable, addEventListener, removeEventListener } from "@decky/api";
+import { callable } from "@decky/api";
 import { useEffect, useState } from "react";
 import { FaRobot } from "react-icons/fa";
-import type { OllamaStatus, OllamaModel, PullProgress } from "./types";
+import type { OllamaStatus, OllamaModel } from "./types";
 
 // ── Backend callables ────────────────────────────────────────────────────────
 
@@ -18,19 +18,6 @@ const startService = callable<[], boolean>("start_service");
 const stopService = callable<[], boolean>("stop_service");
 const installOllama = callable<[], boolean>("install_ollama");
 const listModels = callable<[], OllamaModel[]>("list_models");
-const pullModel = callable<[name: string], boolean>("pull_model");
-const deleteModel = callable<[name: string], boolean>("delete_model");
-
-// Models suggested in the pull UI — small enough to run comfortably on Deck hardware
-const SUGGESTED_MODELS = [
-  "llama3.2:1b",
-  "llama3.2:3b",
-  "phi3.5:3.8b",
-  "gemma3:1b",
-  "gemma3:4b",
-  "qwen2.5:3b",
-  "mistral:7b",
-];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,17 +47,11 @@ function StatusRow({ status }: { status: OllamaStatus | null }) {
   );
 }
 
-function ModelList({
-  models,
-  onDelete,
-}: {
-  models: OllamaModel[];
-  onDelete: (name: string) => void;
-}) {
+function ModelList({ models }: { models: OllamaModel[] }) {
   if (models.length === 0)
     return (
       <PanelSectionRow>
-        <ButtonItem layout="below">No models installed</ButtonItem>
+        <Field label="No models installed" />
       </PanelSectionRow>
     );
 
@@ -78,13 +59,7 @@ function ModelList({
     <>
       {models.map((m) => (
         <PanelSectionRow key={m.name}>
-          <ButtonItem
-            layout="below"
-            description={formatBytes(m.size)}
-            onClick={() => onDelete(m.name)}
-          >
-            {m.name}
-          </ButtonItem>
+          <Field label={m.name} description={formatBytes(m.size)} />
         </PanelSectionRow>
       ))}
     </>
@@ -96,33 +71,16 @@ function ModelList({
 function Content() {
   const [status, setStatus] = useState<OllamaStatus | null>(null);
   const [models, setModels] = useState<OllamaModel[]>([]);
-  const [pullProgress, setPullProgress] = useState<PullProgress | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
     const s = await getStatus();
     setStatus(s);
     if (s.running) setModels(await listModels());
+    else setModels([]);
   }
 
-  useEffect(() => {
-    refresh();
-
-    const onPullProgress = (progress: PullProgress) => setPullProgress(progress);
-    const onPullDone = () => {
-      setPullProgress(null);
-      setBusy(false);
-      refresh();
-    };
-
-    addEventListener<[PullProgress]>("pull_progress", onPullProgress);
-    addEventListener<[]>("pull_done", onPullDone);
-
-    return () => {
-      removeEventListener("pull_progress", onPullProgress);
-      removeEventListener("pull_done", onPullDone);
-    };
-  }, []);
+  useEffect(() => { refresh(); }, []);
 
   async function handleToggleService() {
     setBusy(true);
@@ -135,18 +93,6 @@ function Content() {
   async function handleInstall() {
     setBusy(true);
     await installOllama();
-    await refresh();
-    setBusy(false);
-  }
-
-  async function handlePull(name: string) {
-    setBusy(true);
-    pullModel(name); // fire-and-forget; progress arrives via pull_progress events
-  }
-
-  async function handleDelete(name: string) {
-    setBusy(true);
-    await deleteModel(name);
     await refresh();
     setBusy(false);
   }
@@ -166,11 +112,7 @@ function Content() {
 
         {status?.installed && (
           <PanelSectionRow>
-            <ButtonItem
-              layout="below"
-              onClick={handleToggleService}
-              disabled={busy}
-            >
+            <ButtonItem layout="below" onClick={handleToggleService} disabled={busy}>
               {status.running ? "Stop service" : "Start service"}
             </ButtonItem>
           </PanelSectionRow>
@@ -178,54 +120,9 @@ function Content() {
       </PanelSection>
 
       {status?.running && (
-        <>
-          <PanelSection title="Installed models">
-            <ModelList models={models} onDelete={handleDelete} />
-
-            {pullProgress && (
-              <PanelSectionRow>
-                <ButtonItem layout="below" description={pullProgress.status}>
-                  {pullProgress.total
-                    ? `${Math.round(((pullProgress.completed ?? 0) / pullProgress.total) * 100)}%`
-                    : "Pulling…"}
-                </ButtonItem>
-              </PanelSectionRow>
-            )}
-          </PanelSection>
-
-          <PanelSection title="Pull a model">
-            {SUGGESTED_MODELS.map((name) => (
-              <PanelSectionRow key={name}>
-                <ButtonItem
-                  layout="below"
-                  onClick={() => handlePull(name)}
-                  disabled={busy}
-                >
-                  {name}
-                </ButtonItem>
-              </PanelSectionRow>
-            ))}
-          </PanelSection>
-
-          <PanelSection title="Links">
-            <PanelSectionRow>
-              <ButtonItem
-                layout="below"
-                onClick={() => Router.NavigateToExternalWeb("http://localhost:11434")}
-              >
-                Open Ollama API
-              </ButtonItem>
-            </PanelSectionRow>
-            <PanelSectionRow>
-              <ButtonItem
-                layout="below"
-                onClick={() => Router.NavigateToExternalWeb("https://ollama.com/library")}
-              >
-                Browse model library
-              </ButtonItem>
-            </PanelSectionRow>
-          </PanelSection>
-        </>
+        <PanelSection title="Installed models">
+          <ModelList models={models} />
+        </PanelSection>
       )}
     </>
   );

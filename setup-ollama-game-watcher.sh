@@ -1,47 +1,47 @@
 #!/usr/bin/env bash
-# Installs the ollama-game-watcher as a systemd user service.
-# Does NOT require root — everything goes under ~/.local and ~/.config.
+# Installs the ollama-game-watcher as a systemd system service.
+# Requires root: sudo bash setup-ollama-game-watcher.sh
 set -euo pipefail
 
+if [[ $EUID -ne 0 ]]; then
+    echo "Run as root (sudo)." >&2
+    exit 1
+fi
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="$HOME/.local/bin"
-SERVICE_DIR="$HOME/.config/systemd/user"
-SCRIPT_SRC="$REPO_DIR/scripts/ollama-game-watcher"
-SERVICE_NAME="ollama-game-watcher.service"
+BIN_DEST="/usr/local/bin/ollama-game-watcher"
+SERVICE_FILE="/etc/systemd/system/ollama-game-watcher.service"
 
 # ── 1. Install script ─────────────────────────────────────────────────────────
-mkdir -p "$BIN_DIR"
-install -m 755 "$SCRIPT_SRC" "$BIN_DIR/ollama-game-watcher"
-echo "Installed watcher to $BIN_DIR/ollama-game-watcher"
+install -m 755 "$REPO_DIR/ollama-game-watcher" "$BIN_DEST"
+echo "Installed watcher to $BIN_DEST"
 
 # ── 2. Write service unit ─────────────────────────────────────────────────────
-mkdir -p "$SERVICE_DIR"
-cat > "$SERVICE_DIR/$SERVICE_NAME" << EOF
+cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=Evict Ollama models from VRAM when a Steam game starts
-After=ollama.service network.target
+After=ollama.service
 
 [Service]
 Type=simple
-ExecStart=$BIN_DIR/ollama-game-watcher
+ExecStart=$BIN_DEST
 Restart=always
 RestartSec=5
-# Log to journal with a clean identifier
 SyslogIdentifier=ollama-game-watcher
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 EOF
-echo "Wrote $SERVICE_DIR/$SERVICE_NAME"
+echo "Wrote $SERVICE_FILE"
 
 # ── 3. Enable and start ───────────────────────────────────────────────────────
-systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME"
+systemctl daemon-reload
+systemctl enable --now ollama-game-watcher.service
 echo "Service enabled and started."
 
 echo ""
 echo "Status:"
-systemctl --user status "$SERVICE_NAME" --no-pager -l
+systemctl status ollama-game-watcher.service --no-pager -l || true
 echo ""
 echo "Follow logs with:"
-echo "  journalctl --user -u ollama-game-watcher -f"
+echo "  journalctl -u ollama-game-watcher -f"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Evicts loaded Ollama models from VRAM when a Steam game starts.
-# Runs as a systemd user service — no root required.
+# Runs as a systemd system service (no user session required).
 set -uo pipefail
 
 OLLAMA_URL="http://localhost:11434"

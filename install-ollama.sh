@@ -23,13 +23,14 @@ usermod -aG render ollama
 
 # ── 3. Systemd drop-in ───────────────────────────────────────────────────────
 # - OLLAMA_HOST=0.0.0.0: listen on all interfaces (LAN + Tailscale + loopback)
-# - OLLAMA_KEEP_ALIVE=0: unload model from VRAM immediately after inference,
-#   freeing the RX 7600's 8 GB for games when Ollama is idle
+# - OLLAMA_KEEP_ALIVE=5m: keep model in VRAM for 5 min after last use;
+#   ollama-game-watcher evicts immediately when a Steam game starts
 echo "==> Writing systemd drop-in to $DROPIN_FILE..."
 mkdir -p "$DROPIN_DIR"
 cat > "$DROPIN_FILE" << EOF
 [Service]
 Environment="OLLAMA_HOST=0.0.0.0:${OLLAMA_PORT}"
+Environment="OLLAMA_KEEP_ALIVE=5m"
 EOF
 
 # ── 4. Enable and start ───────────────────────────────────────────────────────
@@ -38,8 +39,8 @@ systemctl daemon-reload
 systemctl enable --now ollama.service
 
 echo ""
+LAN_IP="$(hostname -I | awk '{print $1}')"
 echo "Done. Ollama is listening on 0.0.0.0:${OLLAMA_PORT}"
-echo "  LAN:       http://192.168.178.100:${OLLAMA_PORT}"
-echo "  Tailscale: http://100.66.239.31:${OLLAMA_PORT}"
+echo "  LAN: http://${LAN_IP}:${OLLAMA_PORT}"
 echo ""
 echo "Point OpenWebUI's Ollama URL at whichever address reaches this machine."

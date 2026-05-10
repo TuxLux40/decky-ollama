@@ -1,12 +1,20 @@
 import asyncio
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
 import decky
 
-OLLAMA_BIN = Path("/usr/local/bin/ollama")
+def _find_ollama() -> Path:
+    found = shutil.which("ollama")
+    if found:
+        return Path(found)
+    # fallback to the path used by the official install script
+    return Path("/usr/local/bin/ollama")
+
+OLLAMA_BIN = _find_ollama()
 OLLAMA_API = "http://localhost:11434"
 INSTALL_SCRIPT = "https://ollama.ai/install.sh"
 
