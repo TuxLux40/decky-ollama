@@ -15,6 +15,7 @@ def _find_ollama() -> Path:
     return Path("/usr/local/bin/ollama")
 
 OLLAMA_BIN = _find_ollama()
+OLLAMA_HOST = "0.0.0.0:11434"   # bind on all interfaces so Tailscale clients can reach it
 OLLAMA_API = "http://localhost:11434"
 
 
@@ -76,6 +77,7 @@ class Plugin:
         try:
             subprocess.Popen(
                 [str(OLLAMA_BIN), "serve"],
+                env={**os.environ, "OLLAMA_HOST": OLLAMA_HOST},
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
