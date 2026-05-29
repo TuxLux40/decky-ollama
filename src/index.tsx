@@ -92,10 +92,10 @@ function Content() {
     try {
       if (status?.running) await stopService();
       else await startService();
-      await refresh();
     } catch {
-      await refresh();
+      // ignore toggle errors; refresh below re-syncs status
     } finally {
+      await refresh();
       setBusy(false);
     }
   }
