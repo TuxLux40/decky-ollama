@@ -1,7 +1,6 @@
 import {
   ButtonItem,
   definePlugin,
-  Field,
   PanelSection,
   PanelSectionRow,
   staticClasses,
@@ -50,7 +49,7 @@ function ModelList({ models }: { models: OllamaModel[] }) {
   if (models.length === 0)
     return (
       <PanelSectionRow>
-        <Field label="No models installed" />
+        <ButtonItem layout="below">No models installed</ButtonItem>
       </PanelSectionRow>
     );
 
@@ -58,7 +57,9 @@ function ModelList({ models }: { models: OllamaModel[] }) {
     <>
       {models.map((m) => (
         <PanelSectionRow key={m.name}>
-          <Field label={m.name} description={formatBytes(m.size)} />
+          <ButtonItem layout="below" description={formatBytes(m.size)}>
+            {m.name}
+          </ButtonItem>
         </PanelSectionRow>
       ))}
     </>
@@ -73,20 +74,30 @@ function Content() {
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const s = await getStatus();
-    setStatus(s);
-    if (s.running) setModels(await listModels());
-    else setModels([]);
+    try {
+      const s = await getStatus();
+      setStatus(s);
+      if (s?.running) setModels(await listModels());
+      else setModels([]);
+    } catch {
+      setStatus({ installed: false, running: false, version: null });
+      setModels([]);
+    }
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { void refresh(); }, []);
 
   async function handleToggleService() {
     setBusy(true);
-    if (status?.running) await stopService();
-    else await startService();
-    await refresh();
-    setBusy(false);
+    try {
+      if (status?.running) await stopService();
+      else await startService();
+      await refresh();
+    } catch {
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -119,5 +130,6 @@ export default definePlugin(() => ({
   titleView: <div className={staticClasses.Title}>Ollama</div>,
   content: <Content />,
   icon: <FaRobot />,
+  alwaysRender: false,
   onDismount() {},
 }));
